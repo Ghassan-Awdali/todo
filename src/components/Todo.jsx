@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import Todoitem from "./Todoitem";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+
 export default function Todo() {
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState("");
@@ -40,14 +41,15 @@ export default function Todo() {
     setTasks(updatedTasks);
   };
 
-  // Sort tasks
-  const sortTasks = () => {
-    const sortedTasks = [...tasks].sort((a, b) => {
-      if (a.completed && !b.completed) return 1;
-      if (!a.completed && b.completed) return -1;
-      return a.text.localeCompare(b.text);
-    });
-    setTasks(sortedTasks);
+  // Handle drag end
+  const onDragEnd = (result) => {
+    if (!result.destination) return;
+
+    const reorderedTasks = Array.from(tasks);
+    const [movedTask] = reorderedTasks.splice(result.source.index, 1);
+    reorderedTasks.splice(result.destination.index, 0, movedTask);
+
+    setTasks(reorderedTasks);
   };
 
   return (
@@ -67,32 +69,47 @@ export default function Todo() {
       >
         Add Task
       </button>
-      <button
-        onClick={sortTasks}
-        className="bg-gray-500 text-white p-2 rounded-md w-full mb-4"
-      >
-        Sort Tasks
-      </button>
-      <ul>
-        {tasks.map((task) => (
-          <li
-            key={task.id}
-            className={`p-2 border-b flex justify-between items-center ${
-              task.completed ? "line-through text-gray-500" : ""
-            }`}
-          >
-            <span onClick={() => toggleTaskCompletion(task.id)}>
-              {task.text}
-            </span>
-            <button
-              onClick={() => removeTask(task.id)}
-              className="bg-red-500 text-white p-1 rounded-md"
+      <DragDropContext onDragEnd={onDragEnd}>
+        <Droppable droppableId="tasks">
+          {(provided) => (
+            <ul
+              {...provided.droppableProps}
+              ref={provided.innerRef}
+              className="space-y-2"
             >
-              Remove
-            </button>
-          </li>
-        ))}
-      </ul>
+              {tasks.map((task, index) => (
+                <Draggable
+                  key={task.id}
+                  draggableId={String(task.id)}
+                  index={index}
+                >
+                  {(provided) => (
+                    <li
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      {...provided.dragHandleProps}
+                      className={`p-2 border-b flex justify-between items-center bg-gray-50 ${
+                        task.completed ? "line-through text-gray-500" : ""
+                      }`}
+                    >
+                      <span onClick={() => toggleTaskCompletion(task.id)}>
+                        {task.text}
+                      </span>
+                      <button
+                        onClick={() => removeTask(task.id)}
+                        className="bg-red-500 text-white p-1 rounded-md"
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+            </ul>
+          )}
+        </Droppable>
+      </DragDropContext>
     </div>
   );
 }
